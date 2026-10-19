@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Karmed · Exportar pacientes</title>
+<style>
+  :root {
+    --bg: #0b0f16; --panel: #12171f; --panel-2: #161c26; --border: #262e3a;
+    --text: #e6edf3; --muted: #8b97a6; --accent: #2f81f7; --accent-hover: #4493f8;
+    --ok: #3fb950; --warn: #d29922; --danger: #f85149; --shadow: rgba(0,0,0,.35);
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3f5f8; --panel: #ffffff; --panel-2: #f7f9fc; --border: #e1e6ed;
+      --text: #141a22; --muted: #5b6673; --accent: #1668d6; --accent-hover: #0f5bc0;
+      --ok: #1a7f37; --warn: #9a6700; --danger: #cf222e; --shadow: rgba(140,150,165,.18);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;
+        stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; gap: 14px; padding: 14px 28px;
+    border-bottom: 1px solid var(--border); background: var(--panel);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .logo {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), #8957e5); color: #fff;
+  }
+  .logo svg { width: 19px; height: 19px; stroke-width: 2.2; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+  header .sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  header .spacer { flex: 1; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px;
+    border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--border);
+  }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background .2s; }
+  .pill.on { color: var(--ok); } .pill.on .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 28px 60px; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 1px 2px var(--shadow); margin-bottom: 18px;
+  }
+
+  /* Config (collapsible) */
+  .config summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px; user-select: none;
+  }
+  .config summary::-webkit-details-marker { display: none; }
+  .config summary .chev { margin-left: auto; transition: transform .2s; color: var(--muted); }
+  .config[open] summary .chev { transform: rotate(90deg); }
+  .config summary h2 { margin: 0; font-size: 14px; font-weight: 650; }
+  .config summary .note { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+  .config .body { padding: 4px 20px 20px; border-top: 1px solid var(--border); }
+  .grid { display: grid; grid-template-columns: 140px 1fr; gap: 14px 18px; align-items: center; margin-top: 16px; }
+  .grid label { color: var(--muted); font-size: 13px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  input[type=text], input[type=password], input[type=search] {
+    width: 100%; padding: 9px 13px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); font-size: 14px;
+  }
+  .config input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; }
+  input:focus { outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .pass-row { display: flex; gap: 8px; }
+  .pass-row input { flex: 1; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .config .actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+  .saved { color: var(--ok); font-size: 13px; font-weight: 600; display: inline-flex; gap: 5px; align-items: center; }
+  .endpoint { color: var(--muted); font-size: 12px; margin-top: 14px; word-break: break-all;
+    padding-top: 12px; border-top: 1px dashed var(--border); }
+  .endpoint code { color: var(--text); background: var(--panel-2); padding: 2px 7px; border-radius: 6px; }
+
+  /* Buttons */
+  button {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+  button.ghost { background: transparent; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.sm { padding: 6px 11px; font-size: 12.5px; }
+
+  /* Toolbar + stats */
+  .work { padding: 18px 20px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .search-wrap { position: relative; flex: 1; min-width: 240px; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; color: var(--muted); }
+  .search-wrap input { padding-left: 38px; }
+  .stats { display: flex; gap: 12px; margin: 16px 0 4px; flex-wrap: wrap; }
+  .stat { flex: 1; min-width: 150px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 15px; }
+  .stat .k { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .stat .v { font-size: 22px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; }
+
+  /* Table */
+  .table-wrap { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  thead th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted);
+    font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr { transition: background .1s; }
+  tbody tr:nth-child(even) { background: color-mix(in srgb, var(--panel-2) 45%, transparent); }
+  tbody tr:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  tbody td:first-child { font-family: ui-monospace, Menlo, monospace; color: var(--muted); }
+  tbody td:nth-child(2) { font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .empty { text-align: center; color: var(--muted); padding: 48px 20px; }
+  .empty svg { width: 34px; height: 34px; margin-bottom: 10px; opacity: .5; }
+
+  .pager { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 16px;
+    color: var(--muted); font-size: 13px; }
+
+  /* Feedback bar */
+  .feedback { display: flex; align-items: center; gap: 9px; margin-top: 14px; min-height: 20px;
+    font-size: 13.5px; color: var(--muted); }
+  .feedback a { color: var(--accent); font-weight: 600; text-decoration: none; display: inline-flex; gap: 5px; align-items: center; }
+  .feedback a:hover { text-decoration: underline; }
+  .feedback.err { color: var(--danger); }
+  .spinner { width: 15px; height: 15px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Full-screen loading overlay */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+    background: color-mix(in srgb, var(--bg) 95%, transparent); backdrop-filter: blur(4px);
+  }
+  .overlay.show { display: flex; }
+  .overlay .ring {
+    width: 56px; height: 56px; border: 4px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  .overlay .msg { font-size: 15px; font-weight: 600; color: var(--text); }
+  .overlay .sub { font-size: 13px; color: var(--muted); margin-top: -8px; }
+  .overlay .bar {
+    width: 220px; height: 4px; border-radius: 4px; overflow: hidden;
+    background: var(--border); position: relative;
+  }
+  .overlay .bar::after {
+    content: ""; position: absolute; inset: 0; width: 40%; border-radius: 4px;
+    background: var(--accent); animation: slide 1.1s ease-in-out infinite;
+  }
+  @keyframes slide { 0% { left: -40%; } 100% { left: 100%; } }
+  #overlayCancel { margin-top: 6px; opacity: .85; }
+  #overlayCancel:hover { opacity: 1; border-color: var(--danger); color: var(--danger); }
+  .citas-head { display: flex; align-items: center; gap: 14px; }
+  .citas-head > svg { width: 26px; height: 26px; color: var(--accent); }
+  .citas-head > div { flex: 1; }
+  .citas-title { margin: 0; font-size: 15px; font-weight: 650; }
+  .citas-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  @media (max-width: 620px) { .citas-head { flex-wrap: wrap; } }
+
+  @media (max-width: 620px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .grid { grid-template-columns: 1fr; gap: 6px; }
+    .grid label { margin-top: 8px; }
+    th:nth-child(4), td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+  <div class="ring"></div>
+  <div class="msg" id="overlayMsg">Trabajando…</div>
+  <div class="sub" id="overlaySub"></div>
+  <div class="bar"></div>
+  <button type="button" class="ghost" id="overlayCancel">Cancelar</button>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+    </div>
+    <div>
+      <h1>Karmed · Exportar pacientes</h1>
+      <div class="sub">Herramienta local de exportación</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill" id="statusPill"><span class="dot"></span><span id="statusText">Sin cargar</span></span>
+</header>
+
+<main>
+  <!-- CONFIG -->
+  <details class="card config" id="configPanel">
+    <summary>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      <h2>Configuración</h2>
+      <span class="note" id="configNote"></span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </summary>
+    <div class="body">
+      <div class="grid">
+        <label for="cfg-url">URL base</label>
+        <div class="field">
+          <input type="text" id="cfg-url" placeholder="https://tu-servidor/derma/" />
+          <span class="hint" id="cfg-url-hint"></span>
+        </div>
+        <label for="cfg-user">Usuario</label>
+        <input type="text" id="cfg-user" placeholder="correo o usuario" autocomplete="off" />
+        <label for="cfg-pass">Contraseña</label>
+        <div class="pass-row">
+          <input type="password" id="cfg-pass" placeholder="contraseña" autocomplete="off" />
+          <button type="button" class="ghost" id="cfg-reveal">Mostrar</button>
+        </div>
+        <label for="cfg-branch">Sucursal</label>
+        <div class="field">
+          <input type="text" id="cfg-branch" placeholder="(opcional — solo si el login la exige)" autocomplete="off" />
+          <span class="hint">Déjala vacía salvo que el acceso pida sucursal.</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="cfg-save">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          Guardar
+        </button>
+        <span class="saved" id="cfg-saved" hidden><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Guardado</span>
+      </div>
+      <div class="endpoint">Scrapea: <code id="cfg-endpoint">—</code></div>
+    </div>
+  </details>
+
+  <!-- WORK -->
+  <div class="card work">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" id="q" placeholder="Buscar por nombre o cédula… (rápido, ~1s)" autofocus />
+      </div>
+      <button id="export">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Exportar a Excel
+      </button>
+      <button id="load" class="ghost" title="Trae los 22.944 pacientes para exportar todo o navegar sin buscar. Tarda ~1 min (lo hace el servidor de Karmed, no la app).">
+        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.22-8.56"/><path d="M21 3v6h-6"/></svg>
+        <span id="loadLabel">Cargar todos</span>
+      </button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Total pacientes</div><div class="v" id="statTotal">—</div></div>
+      <div class="stat"><div class="k">Coincidencias</div><div class="v" id="statMatch">—</div></div>
+      <div class="stat"><div class="k">Mostrando</div><div class="v" id="statShown">—</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>No. Historia</th><th>Paciente</th><th>Cédula</th><th>Edad</th><th>Teléfonos</th></tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="5" class="empty">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <div><b>Escribí un nombre o cédula</b> para buscar (rápido).<br>
+            Para exportar <b>todos</b> los pacientes, usá «Cargar todos».</div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager" id="pager"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <!-- CITAS -->
+  <div class="card work">
+    <div class="citas-head">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      <div>
+        <h2 class="citas-title">Citas (agenda)</h2>
+        <div class="citas-sub" id="citasSub">Exportá todas las citas de la agenda a Excel.</div>
+      </div>
+      <button id="citasExport" class="primary">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Exportar todas las citas
+      </button>
+    </div>
+    <div class="feedback" id="citasFeedback"></div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { total: 0, offset: 0, limit: 100, q: "", loaded: false };
+let searchTimer = null;
+let currentAbort = null;   // AbortController for the in-flight load/export
+const fmt = (n) => Number(n).toLocaleString("es");
+const esc = (s) => (s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleString("es", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function loadBusy(on) {
+  // the full-screen overlay is the single loading spinner; here we only disable
+  $("load").disabled = on;
+}
+
+function setFeedbackEl(id, html, kind) {
+  const f = $(id);
+  f.className = "feedback" + (kind ? " " + kind : "");
+  f.innerHTML = html;
+}
+function setFeedback(html, kind) { setFeedbackEl("feedback", html, kind); }
+function busy(msg) { setFeedback(`<span class="spinner"></span> ${esc(msg)}`); }
+function overlay(on, msg, sub) {
+  $("overlay").classList.toggle("show", !!on);
+  if (msg) $("overlayMsg").textContent = msg;
+  $("overlaySub").textContent = sub || "";
+}
+const isAbort = (e) => e && (e.name === "AbortError" || /abort/i.test(e.message || ""));
+$("overlayCancel").onclick = () => {
+  if (currentAbort) currentAbort.abort();   // aborts export fetches
+  if (loadPoll) {                            // background full load keeps running server-side
+    stopLoadPolling();
+    setFeedback("La carga sigue en segundo plano. Usá el buscador; recargá la pestaña para ver cuándo termina.");
+  } else {
+    overlay(false);
+  }
+};
+
+function setStatus(on, text) {
+  state.loaded = on;
+  $("statusPill").classList.toggle("on", on);
+  $("statusText").textContent = text;
+}
+
+/* ---- Config ---- */
+async function loadConfig() {
+  try {
+    const c = await (await fetch("/api/config")).json();
+    $("cfg-url").value = c.url || "";
+    $("cfg-url").placeholder = c.default_url || "";
+    $("cfg-user").value = c.user || "";
+    $("cfg-pass").value = c.password || "";
+    $("cfg-branch").value = c.branch || "";
+    $("cfg-endpoint").textContent = c.endpoint || "—";
+    $("cfg-url-hint").textContent = c.url ? "" : "Ingresá la URL base del sistema (ej. https://tu-servidor/derma/).";
+    const ready = c.user && c.password;
+    $("configNote").textContent = ready ? `· ${c.user}` : "· faltan credenciales";
+    $("configPanel").open = !ready;      // collapsed when already configured
+  } catch {
+    $("cfg-endpoint").textContent = "⚠ no se pudo leer la configuración";
+    $("configPanel").open = true;
+  }
+}
+
+$("cfg-reveal").onclick = () => {
+  const inp = $("cfg-pass");
+  const show = inp.type === "password";
+  inp.type = show ? "text" : "password";
+  $("cfg-reveal").textContent = show ? "Ocultar" : "Mostrar";
+};
+
+$("cfg-save").onclick = async () => {
+  const btn = $("cfg-save"); btn.disabled = true; $("cfg-saved").hidden = true;
+  try {
+    const body = {
+      url: $("cfg-url").value.trim(), user: $("cfg-user").value.trim(),
+      password: $("cfg-pass").value.trim(), branch: $("cfg-branch").value.trim(),
+    };
+    const r = await fetch("/api/config", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "Error al guardar");
+    $("cfg-endpoint").textContent = data.url;
+    $("cfg-saved").hidden = false;
+    setTimeout(() => ($("cfg-saved").hidden = true), 3000);
+    $("configNote").textContent = `· ${body.user}`;
+    resetLoaded("Configuración guardada. Pulsá «Cargar pacientes».");
+  } catch (e) {
+    setFeedback("⚠ " + esc(e.message), "err");
+  } finally { btn.disabled = false; }
+};
+
+function resetLoaded(msg) {
+  setStatus(false, "Sin cargar");
+  $("loadLabel").textContent = "Cargar todos";
+  $("statTotal").textContent = $("statMatch").textContent = $("statShown").textContent = "—";
+  $("rows").innerHTML = `<tr><td colspan="5" class="empty">${esc(msg)}</td></tr>`;
+  $("pager").innerHTML = "";
+  setFeedback("");  // search stays enabled — no need to reload to search
+}
+
+/* ---- Status on open: show cached data instantly, no network ---- */
+async function initStatus() {
+  let s;
+  try {
+    s = await (await fetch("/api/status")).json();
+  } catch { return; }  // ignore, user can load manually
+  if (s.loaded && s.count) {
+    setStatus(true, `${fmt(s.count)} cargados`);
+    $("q").disabled = false; $("export").disabled = false;
+    $("loadLabel").textContent = "Recargar todos";
+    $("statTotal").textContent = fmt(s.count);
+    state.offset = 0; await fetchPage();
+    setFeedback(`Mostrando datos guardados${s.saved_at ? " el " + esc(fmtDate(s.saved_at)) : ""}. Pulsá <b>Recargar todos</b> para traer lo último.`);
+  }
+  if (s.loading) {  // a full load is still running (e.g. started before this reload) -> reconnect
+    loadStart = Date.now();
+    loadBusy(true);
+    overlay(true, "Cargando TODOS los pacientes…", "Reconectado a una carga en curso…");
+    startLoadPolling();
+  }
+}
+
+/* ---- Load list (runs in background, UI polls real status) ---- */
+let loadPoll = null;
+let loadStart = 0;
+
+function stopLoadPolling() {
+  if (loadPoll) { clearInterval(loadPoll); loadPoll = null; }
+  loadBusy(false); overlay(false);
+}
+
+async function loadList(force) {
+  loadBusy(true);
+  loadStart = Date.now();
+  const msg = force ? "Recargando TODOS los pacientes…" : "Trayendo TODOS los pacientes…";
+  busy(msg);
+  overlay(true, msg,
+    "Trae los 22.944 — puede tardar 30-80s (lo arma el servidor de Karmed, no la app). " +
+    "Para un paciente puntual, Cancelá y usá el buscador (~1s).");
+  try {
+    const r = await fetch("/api/load" + (force ? "?force=true" : ""), { method: "POST" });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "Error al cargar");
+    startLoadPolling();  // the fetch returns immediately; follow real status
+  } catch (e) {
+    setFeedback("⚠ " + esc(e.message), "err");
+    stopLoadPolling();
+  }
+}
+
+function startLoadPolling() {
+  if (loadPoll) clearInterval(loadPoll);
+  loadPoll = setInterval(async () => {
+    let s;
+    try {
+      s = await (await fetch("/api/status")).json();
+    } catch { return; }  // transient localhost blip: keep waiting, don't hang
+    const secs = Math.round((Date.now() - loadStart) / 1000);
+    $("overlaySub").textContent =
+      `Van ${secs}s. Trae los 22.944 (lo arma el servidor de Karmed). Podés Cancelar y usar el buscador.`;
+    if (s.loading) return;  // still working
+    stopLoadPolling();
+    if (s.error) { setFeedback("⚠ " + esc(s.error), "err"); return; }
+    // done
+    setStatus(true, `${fmt(s.count)} cargados`);
+    $("q").disabled = false; $("export").disabled = false;
+    $("loadLabel").textContent = "Recargar todos";
+    $("statTotal").textContent = fmt(s.count);
+    $("configPanel").open = false;
+    state.offset = 0; await fetchPage();
+    const when = s.saved_at ? " · guardado " + esc(fmtDate(s.saved_at)) : "";
+    if (s.new > 0) {
+      setFeedback(`<svg viewBox="0 0 24 24" style="color:var(--ok)"><path d="M20 6 9 17l-5-5"/></svg>
+        <b>${fmt(s.new)}</b> paciente(s) nuevo(s) desde la última carga${when}.`);
+    } else {
+      setFeedback(`Listo. ${fmt(s.count)} pacientes en total${when}.`);
+    }
+    $("q").focus();
+  }, 1500);
+}
+
+async function fetchPage() {
+  const term = state.q.trim();
+  if (term) busy("Buscando en Karmed…");
+  const params = new URLSearchParams({ q: state.q, limit: state.limit, offset: state.offset });
+  try {
+    const r = await fetch("/api/patients?" + params);
+    const data = await r.json();
+    if (!r.ok) {
+      if (r.status === 409) {  // nothing loaded and no search term: gentle hint
+        setFeedback(esc(data.detail || ""));
+      } else {
+        setFeedback("⚠ " + esc(data.detail || "Error"), "err");
+      }
+      return;
+    }
+    state.total = data.total;
+    render(data.rows);
+  } catch (e) {
+    setFeedback("⚠ " + esc(e.message), "err");
+  }
+}
+
+function render(rows) {
+  const tbody = $("rows");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <div>Sin resultados${state.q ? ` para «${esc(state.q)}»` : ""}.</div></td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map((p) =>
+      `<tr><td>${esc(p.historia)}</td><td>${esc(p.nombre)}</td><td>${esc(p.cedula)}</td><td>${esc(p.edad)}</td><td>${esc(p.telefonos)}</td></tr>`
+    ).join("");
+  }
+  const from = state.total ? state.offset + 1 : 0;
+  const to = Math.min(state.offset + state.limit, state.total);
+  $("statMatch").textContent = fmt(state.total);
+  $("statShown").textContent = state.total ? `${fmt(from)}–${fmt(to)}` : "0";
+  if (state.q.trim()) {
+    setFeedback(`${fmt(state.total)} coincidencia(s) para «${esc(state.q.trim())}». Podés exportar este resultado.`);
+  } else {
+    setFeedback("");
+  }
+  renderPager();
+}
+
+function renderPager() {
+  const pager = $("pager");
+  const pages = Math.ceil(state.total / state.limit) || 1;
+  const cur = Math.floor(state.offset / state.limit) + 1;
+  pager.innerHTML = "";
+  const mk = (label, disabled, fn) => {
+    const b = document.createElement("button");
+    b.className = "sm ghost"; b.textContent = label; b.disabled = disabled; b.onclick = fn; return b;
+  };
+  pager.appendChild(mk("← Anterior", state.offset === 0, () => { state.offset -= state.limit; fetchPage(); }));
+  const span = document.createElement("span");
+  span.textContent = `Página ${cur} de ${fmt(pages)}`;
+  pager.appendChild(span);
+  pager.appendChild(mk("Siguiente →", state.offset + state.limit >= state.total, () => { state.offset += state.limit; fetchPage(); }));
+}
+
+/* ---- Export ---- */
+async function doExport() {
+  $("export").disabled = true;
+  const all = !state.q.trim();
+  busy("Generando Excel…");
+  overlay(true, all ? "Exportando TODOS los pacientes…" : "Exportando el resultado…",
+          all ? "Si no cargaste el listado, primero usá «Cargar todos»." : "Un momento, preparando el archivo.");
+  currentAbort = new AbortController();
+  try {
+    const r = await fetch("/api/export?q=" + encodeURIComponent(state.q), { method: "POST", signal: currentAbort.signal });
+    const data = await r.json();
+    if (!r.ok) {
+      if (r.status === 409) { setFeedback(esc(data.detail || "")); return; }
+      throw new Error(data.detail || "Error al exportar");
+    }
+    setFeedback(`<svg viewBox="0 0 24 24" style="color:var(--ok)"><path d="M20 6 9 17l-5-5"/></svg>
+      ${fmt(data.count)} pacientes exportados ·
+      <a href="/download/${encodeURIComponent(data.file)}">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Descargar ${esc(data.file)}</a>`);
+    const a = document.createElement("a");
+    a.href = "/download/" + encodeURIComponent(data.file); a.download = data.file;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) {
+    setFeedback(isAbort(e) ? "Exportación cancelada." : "⚠ " + esc(e.message), isAbort(e) ? "" : "err");
+  } finally { currentAbort = null; $("export").disabled = false; overlay(false); }
+}
+
+/* ---- Wire ---- */
+$("load").onclick = () => loadList(state.loaded);
+$("export").onclick = doExport;
+$("q").oninput = (e) => {
+  state.q = e.target.value;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.offset = 0; fetchPage(); }, 250);
+};
+/* ---- Citas ---- */
+async function loadCitasContext() {
+  try {
+    const c = await (await fetch("/api/citas/context")).json();
+    if (c.medicos && c.medicos.length) {
+      const names = c.medicos.map((m) => m.nombre).join(", ");
+      $("citasSub").textContent = `Médico(s): ${names} · sucursal ${c.sucursal}. Exportá todas las citas a Excel.`;
+    }
+  } catch { /* non-blocking */ }
+}
+
+$("citasExport").onclick = async () => {
+  const btn = $("citasExport");
+  btn.disabled = true;
+  overlay(true, "Exportando TODAS las citas…", "Recorre la agenda año por año — puede tardar un minuto. Podés Cancelar.");
+  setFeedbackEl("citasFeedback", `<span class="spinner"></span> Trayendo citas de la agenda…`);
+  currentAbort = new AbortController();
+  try {
+    const r = await fetch("/api/citas/export", { method: "POST", signal: currentAbort.signal });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "Error al exportar citas");
+    setFeedbackEl("citasFeedback",
+      `<svg viewBox="0 0 24 24" style="color:var(--ok)"><path d="M20 6 9 17l-5-5"/></svg>
+       ${fmt(data.count)} citas exportadas ·
+       <a href="/download/${encodeURIComponent(data.file)}">
+         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+         Descargar ${esc(data.file)}</a>`);
+    const a = document.createElement("a");
+    a.href = "/download/" + encodeURIComponent(data.file); a.download = data.file;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) {
+    setFeedbackEl("citasFeedback", isAbort(e) ? "Exportación de citas cancelada." : "⚠ " + esc(e.message), isAbort(e) ? "" : "err");
+  } finally { currentAbort = null; btn.disabled = false; overlay(false); }
+};
+
+loadConfig();
+initStatus();
+loadCitasContext();
+</script>
+</body>
+</html>

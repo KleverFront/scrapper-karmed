@@ -1,0 +1,23 @@
+[project]
+name = "karmed-scraper"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.28.1",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.6",
+    "playwright>=1.64.0",
+    "python-dotenv>=1.2.4",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.scripts]
+karmed-ui = "karmed.web:main"
+
+[dependency-groups]
+dev = [
+    "pillow>=13.0.0",
+    "pyinstaller>=6.22.3",
+]
